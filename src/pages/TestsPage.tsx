@@ -631,7 +631,10 @@ export default function TestsPage() {
                 </div>
               </div>
 
-              <ScrollArea className="h-[calc(100vh-160px)]" style={{ marginRight: '-1rem', paddingRight: '1rem' }}>
+              <ScrollArea
+                className="lg:h-[calc(100vh-160px)] h-[60vh]"
+                style={{ marginRight: '-1rem', paddingRight: '1rem' }}
+              >
                 <div className="space-y-2 p-1">
                   {loading ? (
                     Array.from({ length: 10 }).map((_, i) => (
@@ -641,7 +644,7 @@ export default function TestsPage() {
                     filteredWorkflowRuns.map((run) => (
                       <Card
                         key={run.id}
-                        className={`cursor-pointer transition-colors ${
+                        className={`cursor-pointer transition-colors fast-click ${
                           selectedRun?.id === run.id ? 'ring-2 ring-primary' : 'hover:bg-primary-foreground/50'
                         }`}
                         onClick={() => handleRunSelect(run)}

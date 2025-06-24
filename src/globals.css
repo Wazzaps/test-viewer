@@ -81,3 +81,8 @@
   border-bottom-left-radius: 0.4rem !important;
   border-bottom-right-radius: 0.4rem !important;
 }
+
+button,
+.fast-click {
+  touch-action: manipulation;
+}
