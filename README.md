@@ -1,8 +1,8 @@
 # Test Viewer for GitHub
 
-The App: https://test-viewer.wazzaps.net
+[Website](https://test-viewer.wazzaps.net) | [Documentation](https://github.com/wazzaps/test-viewer/wiki)
 
-Documentation: https://github.com/wazzaps/test-viewer/wiki
+<img src="https://github.com/user-attachments/assets/97034e6c-456d-448c-b0bd-de49cbd75a4c" title="Test results view" width="800">
 
 ## What
 
