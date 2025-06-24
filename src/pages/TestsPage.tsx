@@ -70,6 +70,30 @@ interface Artifact {
   size_in_bytes: number;
 }
 
+// GitHub API response types
+interface GitHubWorkflowRun {
+  id: number;
+  name: string;
+  head_branch: string;
+  status: string;
+  conclusion: string | null;
+  created_at: string;
+  updated_at: string;
+  workflow_id: number;
+  workflow_name: string;
+  run_number: number;
+  actor: {
+    login: string;
+  };
+  path: string;
+}
+
+interface GitHubArtifact {
+  id: number;
+  name: string;
+  size_in_bytes: number;
+}
+
 const formatRelativeTime = (date: Date) => {
   const now = new Date();
   const diff = now.getTime() - date.getTime();
@@ -96,6 +120,7 @@ export default function TestsPage() {
   const repo = params.repo as string;
 
   const [workflowRuns, setWorkflowRuns] = useState<WorkflowRun[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_loadedTestResults, setLoadedTestResults] = useState<Set<string>>(new Set());
   const [selectedRun, setSelectedRun] = useState<WorkflowRun | null>(null);
   const [testResults, setTestResults] = useState<TestResult[]>([]);
@@ -189,8 +214,8 @@ export default function TestsPage() {
 
       const data = await response.json();
       const runs: WorkflowRun[] = data.workflow_runs
-        .filter((run: any) => run.path.includes('test'))
-        .map((run: any) => ({
+        .filter((run: GitHubWorkflowRun) => run.path.includes('test'))
+        .map((run: GitHubWorkflowRun) => ({
           id: run.id,
           name: run.name || run.workflow_id.toString(),
           head_branch: run.head_branch,
@@ -407,7 +432,7 @@ export default function TestsPage() {
       }
 
       const data = await response.json();
-      const artifacts: Artifact[] = data.artifacts.map((artifact: any) => ({
+      const artifacts: Artifact[] = data.artifacts.map((artifact: GitHubArtifact) => ({
         id: artifact.id,
         name: artifact.name,
         size_in_bytes: artifact.size_in_bytes,

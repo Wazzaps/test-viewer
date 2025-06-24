@@ -19,6 +19,18 @@ interface Repository {
   description: string | null;
 }
 
+interface GitHubApiRepository {
+  id: number;
+  name: string;
+  full_name: string;
+  owner: {
+    login: string;
+    type: string;
+  };
+  private: boolean;
+  description: string | null;
+}
+
 interface User {
   login: string;
   name: string;
@@ -176,7 +188,7 @@ export default function HomePage() {
       }
 
       const reposData = await response.json();
-      const repos: Repository[] = reposData.map((repo: any) => ({
+      const repos: Repository[] = reposData.map((repo: GitHubApiRepository) => ({
         id: repo.id,
         name: repo.name,
         full_name: repo.full_name,
