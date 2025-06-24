@@ -1,0 +1,29 @@
+/**
+ * For more details on how to configure Wrangler, refer to:
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "test-viewer",
+    "main": "worker/index.ts",
+    "compatibility_date": "2025-06-20",
+    "assets": {
+        "not_found_handling": "single-page-application"
+    },
+    "observability": {
+        "enabled": true
+    },
+    "secrets_store_secrets": [
+        {
+            "binding": "TEST_VIEWER_KEY",
+            "store_id": "6efc003afb364988b540fd022bc523df",
+            "secret_name": "test-viewer-key"
+        }
+    ],
+	"routes": [
+		{
+			"pattern": "test-viewer.wazzaps.net",
+			"custom_domain": true
+		}
+	]
+}
