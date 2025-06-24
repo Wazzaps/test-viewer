@@ -20,10 +20,10 @@
             "secret_name": "test-viewer-key"
         }
     ],
-	"routes": [
-		{
-			"pattern": "test-viewer.wazzaps.net",
-			"custom_domain": true
-		}
-	]
+    "routes": [
+        {
+            "pattern": "test-viewer.wazzaps.net",
+            "custom_domain": true
+        }
+    ]
 }
