@@ -2,6 +2,7 @@ import { ArrowRight, Bird, Book, Building2, CheckCircle, FlaskConical, Github, S
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,6 +44,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     // Check for authorization code in URL (OAuth callback)
@@ -53,6 +55,7 @@ export default function HomePage() {
 
     if (error) {
       console.error('GitHub OAuth error:', error);
+      setAuthError(`Authentication failed: ${error}`);
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
       return;
@@ -63,7 +66,7 @@ export default function HomePage() {
       const savedState = localStorage.getItem('github_oauth_state');
       if (!state || !savedState || state !== savedState) {
         console.error('OAuth state mismatch - possible CSRF attack');
-        alert('Authentication failed due to security validation error.');
+        setAuthError('Authentication failed due to security validation error.');
         // Clean up URL
         window.history.replaceState({}, document.title, window.location.pathname);
         return;
@@ -85,6 +88,7 @@ export default function HomePage() {
 
   const handleOAuthCallback = async (code: string) => {
     setAuthLoading(true);
+    setAuthError(null);
     try {
       // Exchange authorization code for access token using worker
       const tokenResponse = await fetch('/api/github-auth', {
@@ -114,12 +118,14 @@ export default function HomePage() {
       await fetchRepositories(accessToken);
     } catch (error) {
       console.error('Failed to complete OAuth flow:', error);
+      setAuthError(error instanceof Error ? error.message : 'Authentication failed. Please try again.');
     } finally {
       setAuthLoading(false);
     }
   };
 
   const signInWithGitHub = () => {
+    setAuthError(null);
     const state =
       Math.random().toString(36).substring(7) +
       Math.random().toString(36).substring(7) +
@@ -271,6 +277,14 @@ export default function HomePage() {
                   </>
                 )}
               </div>
+
+              {authError && (
+                <div className="max-w-md mx-auto mb-8">
+                  <Alert variant="destructive">
+                    <AlertDescription>{authError}</AlertDescription>
+                  </Alert>
+                </div>
+              )}
             </div>
           </div>
         </section>
