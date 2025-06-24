@@ -21,7 +21,6 @@ export async function githubAuth(request: Request, env: Env) {
       {
         status: 400,
         headers: {
-          'Access-Control-Allow-Origin': '*',
           'Content-Type': 'application/json',
         },
       },
@@ -38,7 +37,6 @@ export async function githubAuth(request: Request, env: Env) {
       {
         status: 400,
         headers: {
-          'Access-Control-Allow-Origin': '*',
           'Content-Type': 'application/json',
         },
       },
@@ -74,7 +72,6 @@ export async function githubAuth(request: Request, env: Env) {
   return new Response(await tokenResponse.text(), {
     status: 200,
     headers: {
-      'Access-Control-Allow-Origin': '*',
       'Content-Type': 'application/json',
     },
   });
