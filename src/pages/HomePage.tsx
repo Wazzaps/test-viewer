@@ -84,7 +84,7 @@ export default function HomePage() {
         fetchRepositories(token);
       }
     }
-  });
+  }, [isAuthenticated]);
 
   const handleOAuthCallback = async (code: string) => {
     setAuthLoading(true);
