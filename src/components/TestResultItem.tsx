@@ -45,7 +45,7 @@ export function TestResultItem({ test, isExpanded, onToggleExpansion }: TestResu
       </CollapsibleTrigger>
       <CollapsibleContent className="px-3 pb-3">
         {test.errorMessage && (
-          <Alert variant="destructive" className="mt-4 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300">
+          <Alert variant="destructive" className="mt-4 bg-[#fff9f9] dark:bg-[#281212] text-red-700 dark:text-red-300">
             <div>
               <AlertTitle>{test.errorMessage}</AlertTitle>
               <AlertDescription>{test.errorType}</AlertDescription>
@@ -54,9 +54,7 @@ export function TestResultItem({ test, isExpanded, onToggleExpansion }: TestResu
             {test.errorContent && (
               <>
                 <hr className="my-2 border-red-300 dark:border-red-800" />
-                <pre className="text-xs bg-red-50 dark:bg-red-950 rounded overflow-x-auto text-red-700 dark:text-red-300">
-                  {test.errorContent}
-                </pre>
+                <pre className="text-xs rounded overflow-x-auto">{test.errorContent}</pre>
               </>
             )}
           </Alert>
