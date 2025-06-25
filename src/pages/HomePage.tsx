@@ -289,8 +289,23 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* Screenshot Section */}
+        <section className="py-10 px-4 bg-muted/50">
+          <div className="container mx-auto max-w-5xl">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Screenshot</h2>
+            </div>
+
+            <img
+              src="/screenshot.jpg"
+              alt="Test results"
+              className="w-full h-auto rounded-lg border border-primary/20 shadow-md"
+            />
+          </div>
+        </section>
+
         {/* Features Section */}
-        <section className="py-20 px-4 bg-muted/50">
+        <section className="py-10 px-4 bg-muted/50">
           <div className="container mx-auto max-w-5xl">
             <div className="text-center mb-8">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">Features</h2>
@@ -338,7 +353,12 @@ export default function HomePage() {
                   <div className="mx-auto w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
                     <Bird className="h-6 w-6 text-primary" />
                   </div>
-                  <CardTitle>Free & Open Source</CardTitle>
+                  <CardTitle>
+                    Free &{' '}
+                    <a href="https://github.com/Wazzaps/test-viewer" className="text-primary underline">
+                      Open Source
+                    </a>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground">Our server costs are trivial since it's all local.</p>
