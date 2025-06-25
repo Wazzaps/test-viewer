@@ -249,8 +249,41 @@ export const processTestResultsArtifact = async (artifact: Artifact, blob: Blob,
   const zipReader = new zip.ZipReader(new zip.BlobReader(blob));
   const entries = await zipReader.getEntries();
 
+  // Look for test-viewer.json configuration file
+  let junitPatterns: string[] = ['**.xml']; // Default pattern
+  const configEntry = entries.find((entry) => entry.filename === 'test-viewer.json');
+
+  if (configEntry) {
+    try {
+      const configContent = await configEntry.getData!(new zip.TextWriter());
+      const config = JSON.parse(configContent);
+      if (config.junit && Array.isArray(config.junit)) {
+        junitPatterns = config.junit;
+      }
+    } catch (error) {
+      console.warn('Failed to parse test-viewer.json, using default pattern:', error);
+    }
+  }
+
+  // Convert glob patterns to regex patterns
+  const regexPatterns = junitPatterns.map((pattern) => {
+    // Convert glob pattern to regex
+    // ** matches any number of directories
+    // * matches any characters except path separators
+    const regexStr = pattern
+      .replace(/\./g, '\\.') // Escape dots
+      .replace(/\*/g, '[^/]*') // * becomes [^/]* (matches anything except slashes)
+      .replace(/\[\^\/\]\*\[\^\/\]\*/g, '.*'); // ** becomes .* (matches anything including slashes)
+
+    return new RegExp(`^${regexStr}$`);
+  });
+
+  console.log(regexPatterns, entries);
   for (const entry of entries) {
-    if (entry.filename.endsWith('.xml')) {
+    // Check if the entry matches any of the junit patterns
+    const matchesPattern = regexPatterns.some((regex) => regex.test(entry.filename));
+
+    if (matchesPattern) {
       const content = await entry.getData!(new zip.TextWriter());
       const xml = new DOMParser().parseFromString(content, 'application/xml');
       const testSuites = xml.getElementsByTagName('testsuite');
@@ -298,8 +331,8 @@ export const processTestResultsArtifact = async (artifact: Artifact, blob: Blob,
 
       store.addLoadedTestResult(fullArtifactId);
       store.addTestResults(newTestResults);
-      store.setLoadingTests(false);
     }
+    store.setLoadingTests(false);
   }
 };
 
