@@ -278,7 +278,6 @@ export const processTestResultsArtifact = async (artifact: Artifact, blob: Blob,
     return new RegExp(`^${regexStr}$`);
   });
 
-  console.log(regexPatterns, entries);
   for (const entry of entries) {
     // Check if the entry matches any of the junit patterns
     const matchesPattern = regexPatterns.some((regex) => regex.test(entry.filename));
