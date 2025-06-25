@@ -34,7 +34,6 @@ export function useTestsPage(org: string, repo: string) {
     setFilterMyRuns,
     setWorkflowRuns,
     toggleTestExpansion,
-    toggleTestErrorExpansion,
   } = useTestsStore();
 
   const currentUser = localStorage.getItem('github_user_login');
@@ -145,7 +144,6 @@ export function useTestsPage(org: string, repo: string) {
     // Actions
     handleRunSelect,
     toggleTestExpansion,
-    toggleTestErrorExpansion,
     downloadArtifact,
     setFilterMyRuns,
     fetchWorkflowRuns: fetchWorkflowRunsAction,
