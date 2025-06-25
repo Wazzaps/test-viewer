@@ -8,9 +8,7 @@ interface TestResultsCardProps {
   loading: boolean;
   error: string | null;
   expandedTests: Set<string>;
-  expandedTestErrors: Set<string>;
   onToggleTestExpansion: (testName: string) => void;
-  onToggleTestErrorExpansion: (testName: string) => void;
 }
 
 export function TestResultsCard({
@@ -18,9 +16,7 @@ export function TestResultsCard({
   loading,
   error,
   expandedTests,
-  expandedTestErrors,
   onToggleTestExpansion,
-  onToggleTestErrorExpansion,
 }: TestResultsCardProps) {
   const stats = {
     passed: testResults.filter((t) => t.status === 'passed').length,
@@ -78,9 +74,7 @@ export function TestResultsCard({
                 key={test.id}
                 test={test}
                 isExpanded={expandedTests.has(test.id)}
-                isErrorExpanded={expandedTestErrors.has(test.name)}
                 onToggleExpansion={() => onToggleTestExpansion(test.id)}
-                onToggleErrorExpansion={() => onToggleTestErrorExpansion(test.name)}
               />
             ))
           ) : (

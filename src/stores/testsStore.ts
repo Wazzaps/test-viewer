@@ -10,7 +10,6 @@ interface TestsState {
   artifacts: Artifact[];
   loading: boolean;
   expandedTests: Set<string>;
-  expandedTestErrors: Set<string>;
   error: string | null;
   loadingTests: boolean;
   loadingArtifacts: boolean;
@@ -33,7 +32,6 @@ interface TestsState {
 
   // Test expansion actions
   toggleTestExpansion: (testName: string) => void;
-  toggleTestErrorExpansion: (testName: string) => void;
 
   // Reset actions
   resetTestResults: () => void;
@@ -45,7 +43,7 @@ interface TestsState {
   addLoadedTestResult: (resultId: string) => void;
 }
 
-export const useTestsStore = create<TestsState>((set, get) => ({
+export const useTestsStore = create<TestsState>((set) => ({
   // Initial state
   workflowRuns: [],
   selectedRun: null,
@@ -53,7 +51,6 @@ export const useTestsStore = create<TestsState>((set, get) => ({
   artifacts: [],
   loading: false,
   expandedTests: new Set(),
-  expandedTestErrors: new Set(),
   error: null,
   loadingTests: false,
   loadingArtifacts: false,
@@ -84,18 +81,6 @@ export const useTestsStore = create<TestsState>((set, get) => ({
         newExpanded.add(testName);
       }
       return { expandedTests: newExpanded };
-    });
-  },
-
-  toggleTestErrorExpansion: (testName) => {
-    set((state) => {
-      const newExpanded = new Set(state.expandedTestErrors);
-      if (newExpanded.has(testName)) {
-        newExpanded.delete(testName);
-      } else {
-        newExpanded.add(testName);
-      }
-      return { expandedTestErrors: newExpanded };
     });
   },
 

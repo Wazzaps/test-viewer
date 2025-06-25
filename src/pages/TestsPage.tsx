@@ -21,7 +21,6 @@ export default function TestsPage() {
     artifacts,
     loading,
     expandedTests,
-    expandedTestErrors,
     error,
     loadingTests,
     loadingArtifacts,
@@ -32,7 +31,6 @@ export default function TestsPage() {
     // Actions
     handleRunSelect,
     toggleTestExpansion,
-    toggleTestErrorExpansion,
     downloadArtifact,
     setFilterMyRuns,
     fetchWorkflowRuns,
@@ -85,9 +83,7 @@ export default function TestsPage() {
                   loading={loadingTests}
                   error={error}
                   expandedTests={expandedTests}
-                  expandedTestErrors={expandedTestErrors}
                   onToggleTestExpansion={toggleTestExpansion}
-                  onToggleTestErrorExpansion={toggleTestErrorExpansion}
                 />
               </div>
             ) : loading ? (

@@ -1,15 +1,12 @@
-import { CheckCircle, ChevronDown, ChevronRight, ChevronUp, CircleDashed, CircleHelp, XCircle } from 'lucide-react';
+import { CheckCircle, ChevronDown, ChevronRight, CircleDashed, CircleHelp, XCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type { TestResult } from './types';
 
 interface TestResultItemProps {
   test: TestResult;
   isExpanded: boolean;
-  isErrorExpanded: boolean;
   onToggleExpansion: () => void;
-  onToggleErrorExpansion: () => void;
 }
 
 function getStatusIcon(status: string) {
@@ -25,13 +22,7 @@ function getStatusIcon(status: string) {
   }
 }
 
-export function TestResultItem({
-  test,
-  isExpanded,
-  isErrorExpanded,
-  onToggleExpansion,
-  onToggleErrorExpansion,
-}: TestResultItemProps) {
+export function TestResultItem({ test, isExpanded, onToggleExpansion }: TestResultItemProps) {
   return (
     <Collapsible open={isExpanded} className="test-result-row">
       <CollapsibleTrigger
@@ -55,33 +46,18 @@ export function TestResultItem({
       <CollapsibleContent className="px-3 pb-3">
         {test.errorMessage && (
           <Alert variant="destructive" className="mt-4 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <AlertTitle>{test.errorMessage}</AlertTitle>
-                <AlertDescription>{test.errorType}</AlertDescription>
-              </div>
-
-              {test.errorContent && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="hover:bg-red-100 dark:hover:bg-red-900"
-                  onClick={onToggleErrorExpansion}
-                >
-                  {isErrorExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </Button>
-              )}
+            <div>
+              <AlertTitle>{test.errorMessage}</AlertTitle>
+              <AlertDescription>{test.errorType}</AlertDescription>
             </div>
 
             {test.errorContent && (
-              <Collapsible open={isErrorExpanded} onOpenChange={onToggleErrorExpansion}>
-                <CollapsibleContent>
-                  <hr className="my-2 border-red-300 dark:border-red-800" />
-                  <pre className="text-xs bg-red-50 dark:bg-red-950 rounded overflow-x-auto text-red-700 dark:text-red-300">
-                    {test.errorContent}
-                  </pre>
-                </CollapsibleContent>
-              </Collapsible>
+              <>
+                <hr className="my-2 border-red-300 dark:border-red-800" />
+                <pre className="text-xs bg-red-50 dark:bg-red-950 rounded overflow-x-auto text-red-700 dark:text-red-300">
+                  {test.errorContent}
+                </pre>
+              </>
             )}
           </Alert>
         )}
