@@ -20,6 +20,7 @@ export function useTestsPage(org: string, repo: string) {
   const [loadingTests, setLoadingTests] = useState(false);
   const [loadingArtifacts, setLoadingArtifacts] = useState(false);
   const [filterMyRuns, setFilterMyRuns] = useState(false);
+  const [loadingSpecificRun, setLoadingSpecificRun] = useState(false);
   const currentUser = localStorage.getItem('github_user_login');
 
   useEffect(() => {
@@ -45,17 +46,42 @@ export function useTestsPage(org: string, repo: string) {
           setSelectedRun(runFromUrl);
           return;
         }
+
+        // If run not found in the list, fetch it individually
+        if (!loadingSpecificRun) {
+          setLoadingSpecificRun(true);
+          fetchWorkflowRunById(runIdFromUrl).then((fetchedRun) => {
+            if (fetchedRun) {
+              // Add the fetched run to the top of the list
+              setWorkflowRuns((prev) => {
+                // Check if the run is already in the list (shouldn't happen, but just in case)
+                const existingIndex = prev.findIndex((run) => run.id === fetchedRun.id);
+                if (existingIndex >= 0) {
+                  // Update the existing run with the fetched data
+                  const updated = [...prev];
+                  updated[existingIndex] = fetchedRun;
+                  return updated;
+                }
+                // Add the fetched run at the top
+                return [fetchedRun, ...prev];
+              });
+              setSelectedRun(fetchedRun);
+            }
+            setLoadingSpecificRun(false);
+          });
+          return;
+        }
       }
 
       // If no run in URL or run not found, select the first run and update URL
-      if (!selectedRun) {
+      if (!selectedRun && !loadingSpecificRun) {
         const firstRun = workflowRuns[0];
         setSelectedRun(firstRun);
         setSearchParams({ run: firstRun.id.toString() });
         fetchArtifacts(firstRun);
       }
     }
-  }, [workflowRuns, searchParams, setSearchParams]);
+  }, [workflowRuns, searchParams, setSearchParams, loadingSpecificRun]);
 
   useEffect(() => {
     if (selectedRun) {
@@ -125,6 +151,70 @@ export function useTestsPage(org: string, repo: string) {
       setError('Failed to fetch workflow runs. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchWorkflowRunById = async (runId: string): Promise<WorkflowRun | null> => {
+    const token = localStorage.getItem('github_token');
+    if (!token) {
+      setError('No authentication token found. Please sign in again.');
+      return null;
+    }
+
+    try {
+      const response = await fetch(`https://api.github.com/repos/${org}/${repo}/actions/runs/${runId}`, {
+        headers: {
+          Authorization: `token ${token}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError('Authentication failed. Your token may have expired. Please sign in again.');
+          localStorage.removeItem('github_token');
+          navigate('/');
+          return null;
+        }
+        if (response.status === 404) {
+          setError('Workflow run not found.');
+          return null;
+        }
+        if (response.status === 403) {
+          setError('Access denied. You may not have permission to view this workflow run.');
+          return null;
+        }
+        throw new Error(`GitHub API error: ${response.status}`);
+      }
+
+      const run: GitHubWorkflowRun = await response.json();
+
+      // Only include test-related workflows
+      if (!run.path.includes('test')) {
+        setError('This workflow run does not contain test results.');
+        return null;
+      }
+
+      return {
+        id: run.id,
+        name: run.name || run.workflow_id.toString(),
+        head_branch: run.head_branch,
+        status: run.status,
+        conclusion: run.conclusion,
+        created_at: run.created_at,
+        updated_at: run.updated_at,
+        workflow_id: run.workflow_id,
+        workflow_name: run.name || `Workflow ${run.workflow_id}`,
+        run_number: run.run_number,
+        actor: {
+          login: run.actor.login,
+        },
+        isFetched: true, // Flag to indicate this run was fetched individually
+      };
+    } catch (error) {
+      console.error('Failed to fetch workflow run:', error);
+      setError('Failed to fetch workflow run. Please try again.');
+      return null;
     }
   };
 
@@ -427,6 +517,7 @@ export function useTestsPage(org: string, repo: string) {
     loadingArtifacts,
     filterMyRuns,
     currentUser,
+    loadingSpecificRun,
 
     // Actions
     handleRunSelect,

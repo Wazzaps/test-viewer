@@ -27,6 +27,7 @@ export default function TestsPage() {
     loadingArtifacts,
     filterMyRuns,
     currentUser,
+    loadingSpecificRun,
 
     // Actions
     handleRunSelect,
@@ -55,7 +56,7 @@ export default function TestsPage() {
           <WorkflowRunsSidebar
             workflowRuns={workflowRuns}
             selectedRun={selectedRun}
-            loading={loading}
+            loading={loading || loadingSpecificRun}
             filterMyRuns={filterMyRuns}
             currentUser={currentUser}
             onRunSelect={handleRunSelect}

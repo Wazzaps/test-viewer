@@ -14,6 +14,7 @@ export interface WorkflowRun {
   actor: {
     login: string;
   };
+  isFetched?: boolean;
 }
 
 export interface TestResult {

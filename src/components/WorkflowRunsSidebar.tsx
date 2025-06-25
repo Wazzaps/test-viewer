@@ -1,6 +1,7 @@
 import { Filter, FlaskConicalOff, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import type { WorkflowRun } from './types';
 import { WorkflowRunCard } from './WorkflowRunCard';
 
@@ -58,13 +59,20 @@ export function WorkflowRunsSidebar({
                 <div key={i} className="h-16 bg-secondary rounded animate-pulse"></div>
               ))
             ) : filteredWorkflowRuns.length > 0 ? (
-              filteredWorkflowRuns.map((run) => (
-                <WorkflowRunCard
-                  key={run.id}
-                  run={run}
-                  isSelected={selectedRun?.id === run.id}
-                  onSelect={() => onRunSelect(run)}
-                />
+              filteredWorkflowRuns.map((run, index) => (
+                <div key={run.id}>
+                  <WorkflowRunCard
+                    run={run}
+                    isSelected={selectedRun?.id === run.id}
+                    onSelect={() => onRunSelect(run)}
+                  />
+                  {index === 0 && run.isFetched && (
+                    <div className="my-3">
+                      <Separator />
+                      <div className="text-xs text-muted-foreground text-center mt-2 mb-1">Recent Runs</div>
+                    </div>
+                  )}
+                </div>
               ))
             ) : (
               <div className="text-center py-8">
