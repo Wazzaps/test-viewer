@@ -26,6 +26,7 @@ export function useTestsPage(org: string, repo: string) {
     loadingArtifacts,
     filterMyRuns,
     loadingSpecificRun,
+    coverageTrees,
 
     // Actions
     setSelectedRun,
@@ -140,6 +141,7 @@ export function useTestsPage(org: string, repo: string) {
     filterMyRuns,
     currentUser,
     loadingSpecificRun,
+    coverageTrees,
 
     // Actions
     handleRunSelect,

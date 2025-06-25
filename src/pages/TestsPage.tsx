@@ -1,9 +1,12 @@
 import { AlertCircle, FlaskConicalOff } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { CoverageFrameModal } from '@/components/CoverageFrameModal';
 import { TestResultsCard } from '@/components/TestResultsCard';
 import { TestsPageHeader } from '@/components/TestsPageHeader';
+import type { CoverageTree } from '@/components/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { WorkflowRunsSidebar } from '@/components/WorkflowRunsSidebar';
 import { useTestsPage } from '@/hooks/useTestsPage';
 
@@ -12,6 +15,8 @@ export default function TestsPage() {
   const navigate = useNavigate();
   const org = params.org as string;
   const repo = params.repo as string;
+  const [selectedCoverageTree, setSelectedCoverageTree] = useState<CoverageTree | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const {
     // State
@@ -27,6 +32,7 @@ export default function TestsPage() {
     filterMyRuns,
     currentUser,
     loadingSpecificRun,
+    coverageTrees,
 
     // Actions
     handleRunSelect,
@@ -35,6 +41,20 @@ export default function TestsPage() {
     setFilterMyRuns,
     fetchWorkflowRuns,
   } = useTestsPage(org, repo);
+
+  const handleOpenCoverage = (coverageTree: CoverageTree) => {
+    setSelectedCoverageTree(coverageTree);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedCoverageTree(null);
+  };
+
+  const coverageTreeNames = Object.keys(coverageTrees).sort((a, b) =>
+    coverageTrees[a].name.localeCompare(coverageTrees[b].name),
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -77,6 +97,29 @@ export default function TestsPage() {
               </Card>
             ) : selectedRun ? (
               <div className="space-y-6">
+                {/* Coverage Reports */}
+                {coverageTreeNames.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <h3 className="text-lg font-semibold">Coverage Reports</h3>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {coverageTreeNames.map((name) => (
+                          <Button
+                            key={name}
+                            variant="secondary"
+                            className="h-auto p-2 flex items-center gap-2"
+                            onClick={() => handleOpenCoverage(coverageTrees[name])}
+                          >
+                            <span className="text-sm font-medium">{coverageTrees[name].name}</span>
+                          </Button>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Test Results */}
                 <TestResultsCard
                   testResults={testResults}
@@ -99,6 +142,9 @@ export default function TestsPage() {
           </div>
         </div>
       </main>
+
+      {/* Coverage Frame Modal */}
+      <CoverageFrameModal coverageTree={selectedCoverageTree} isOpen={isModalOpen} onClose={handleCloseModal} />
     </div>
   );
 }

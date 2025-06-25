@@ -1,12 +1,20 @@
 import * as zip from '@zip.js/zip.js';
 import { create } from 'zustand';
-import type { Artifact, GitHubArtifact, GitHubWorkflowRun, TestResult, WorkflowRun } from '@/components/types';
+import type {
+  Artifact,
+  CoverageTree,
+  GitHubArtifact,
+  GitHubWorkflowRun,
+  TestResult,
+  WorkflowRun,
+} from '@/components/types';
 
 interface TestsState {
   // State
   workflowRuns: WorkflowRun[];
   selectedRun: WorkflowRun | null;
   testResults: TestResult[];
+  coverageTrees: Record<string, CoverageTree>;
   artifacts: Artifact[];
   loading: boolean;
   expandedTests: Set<string>;
@@ -21,6 +29,7 @@ interface TestsState {
   setWorkflowRuns: (runs: WorkflowRun[]) => void;
   setSelectedRun: (run: WorkflowRun | null) => void;
   setTestResults: (results: TestResult[]) => void;
+  addCoverageTree: (name: string, coverageTree: CoverageTree) => void;
   setArtifacts: (artifacts: Artifact[]) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
@@ -37,6 +46,7 @@ interface TestsState {
   resetTestResults: () => void;
   resetArtifacts: () => void;
   resetLoadedTestResults: () => void;
+  resetCoverageTrees: () => void;
 
   // Utility actions
   addTestResults: (results: TestResult[]) => void;
@@ -57,6 +67,7 @@ export const useTestsStore = create<TestsState>((set) => ({
   filterMyRuns: false,
   loadingSpecificRun: false,
   loadedTestResults: new Set(),
+  coverageTrees: {},
 
   // Setters
   setWorkflowRuns: (runs) => set({ workflowRuns: runs }),
@@ -70,6 +81,8 @@ export const useTestsStore = create<TestsState>((set) => ({
   setFilterMyRuns: (filter) => set({ filterMyRuns: filter }),
   setLoadingSpecificRun: (loading) => set({ loadingSpecificRun: loading }),
   setLoadedTestResults: (results) => set({ loadedTestResults: results }),
+  addCoverageTree: (name, coverageTree) =>
+    set((state) => ({ coverageTrees: { ...state.coverageTrees, [name]: coverageTree } })),
 
   // Test expansion actions
   toggleTestExpansion: (testName) => {
@@ -88,6 +101,7 @@ export const useTestsStore = create<TestsState>((set) => ({
   resetTestResults: () => set({ testResults: [] }),
   resetArtifacts: () => set({ artifacts: [] }),
   resetLoadedTestResults: () => set({ loadedTestResults: new Set() }),
+  resetCoverageTrees: () => set({ coverageTrees: {} }),
 
   // Utility actions
   addTestResults: (results) => {
@@ -244,6 +258,11 @@ export const fetchWorkflowRunById = async (org: string, repo: string, runId: str
   }
 };
 
+interface TestViewerConfig {
+  junit?: string[];
+  html_coverage?: string;
+}
+
 export const processTestResultsArtifact = async (artifact: Artifact, blob: Blob, runId: number) => {
   const store = useTestsStore.getState();
   const zipReader = new zip.ZipReader(new zip.BlobReader(blob));
@@ -251,14 +270,30 @@ export const processTestResultsArtifact = async (artifact: Artifact, blob: Blob,
 
   // Look for test-viewer.json configuration file
   let junitPatterns: string[] = ['**.xml']; // Default pattern
-  const configEntry = entries.find((entry) => entry.filename === 'test-viewer.json');
+  let htmlCoverageIndex: string | null = null;
+  let htmlCoverageDir: string | null = null;
 
+  const llvmCovEntry = entries.find((entry) => entry.filename === 'llvm-cov/html/index.html');
+  if (llvmCovEntry) {
+    htmlCoverageIndex = 'llvm-cov/html/index.html';
+    htmlCoverageDir = 'llvm-cov/html';
+  }
+
+  const configEntry = entries.find((entry) => entry.filename === 'test-viewer.json');
   if (configEntry) {
     try {
       const configContent = await configEntry.getData!(new zip.TextWriter());
-      const config = JSON.parse(configContent);
+      const config: TestViewerConfig = JSON.parse(configContent);
       if (config.junit && Array.isArray(config.junit)) {
         junitPatterns = config.junit;
+      }
+      if (config.html_coverage) {
+        htmlCoverageIndex = config.html_coverage;
+        if (htmlCoverageIndex.includes('/')) {
+          htmlCoverageDir = htmlCoverageIndex.split('/').slice(0, -1).join('/');
+        } else {
+          htmlCoverageDir = '';
+        }
       }
     } catch (error) {
       console.warn('Failed to parse test-viewer.json, using default pattern:', error);
@@ -278,11 +313,18 @@ export const processTestResultsArtifact = async (artifact: Artifact, blob: Blob,
     return new RegExp(`^${regexStr}$`);
   });
 
+  const coverageTree: CoverageTree = {
+    name: artifact.name,
+    files: {},
+    indexPath: htmlCoverageIndex || '',
+  };
   for (const entry of entries) {
-    // Check if the entry matches any of the junit patterns
-    const matchesPattern = regexPatterns.some((regex) => regex.test(entry.filename));
+    if (htmlCoverageDir !== null && entry.filename.startsWith(htmlCoverageDir + '/')) {
+      coverageTree.files[entry.filename] = await entry.getData!(new zip.TextWriter());
+    }
 
-    if (matchesPattern) {
+    // Check if the entry matches any of the junit patterns
+    if (regexPatterns.some((regex) => regex.test(entry.filename))) {
       const content = await entry.getData!(new zip.TextWriter());
       const xml = new DOMParser().parseFromString(content, 'application/xml');
       const testSuites = xml.getElementsByTagName('testsuite');
@@ -330,6 +372,9 @@ export const processTestResultsArtifact = async (artifact: Artifact, blob: Blob,
 
       store.addLoadedTestResult(fullArtifactId);
       store.addTestResults(newTestResults);
+      if (coverageTree.indexPath) {
+        store.addCoverageTree(artifact.name, coverageTree);
+      }
     }
     store.setLoadingTests(false);
   }
@@ -394,14 +439,17 @@ export const fetchTestResultsArtifact = async (org: string, repo: string, artifa
 
 export const processArtifactsList = async (org: string, repo: string, run: WorkflowRun, artifacts: Artifact[]) => {
   const store = useTestsStore.getState();
-  store.setArtifacts(artifacts);
+
+  // Sort artifacts by name
+  const sortedArtifacts = [...artifacts].sort((a, b) => a.name.localeCompare(b.name));
+  store.setArtifacts(sortedArtifacts);
 
   if (run.conclusion) {
-    localStorage.setItem(`run_artifacts_${run.id}`, JSON.stringify(artifacts));
+    localStorage.setItem(`run_artifacts_${run.id}`, JSON.stringify(sortedArtifacts));
   }
 
   // Automatically download and log test artifacts
-  const testArtifacts = artifacts.filter(
+  const testArtifacts = sortedArtifacts.filter(
     (artifact) =>
       artifact.name.toLowerCase().includes('test-artifacts') || artifact.name.toLowerCase().includes('test-results'),
   );
@@ -431,6 +479,7 @@ export const fetchArtifacts = async (org: string, repo: string, run: WorkflowRun
   store.resetArtifacts();
   store.resetTestResults();
   store.resetLoadedTestResults();
+  store.resetCoverageTrees();
 
   const cachedArtifacts = localStorage.getItem(`run_artifacts_${run.id}`);
   if (cachedArtifacts) {
@@ -513,7 +562,6 @@ export const downloadArtifact = async (org: string, repo: string, artifact: Arti
         store.setError('Access denied. You may not have permission to download this artifact.');
         return;
       }
-      console.log(response);
       throw new Error(`Failed to download artifact: ${response.status}`);
     }
 

@@ -61,6 +61,12 @@ export interface GitHubArtifact {
   size_in_bytes: number;
 }
 
+export interface CoverageTree {
+  name: string;
+  files: Record<string, string>;
+  indexPath: string;
+}
+
 export const formatRelativeTime = (date: Date) => {
   const now = new Date();
   const diff = now.getTime() - date.getTime();
