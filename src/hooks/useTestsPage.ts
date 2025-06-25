@@ -145,7 +145,8 @@ export function useTestsPage(org: string, repo: string) {
             const testcaseDuration = testCase.getAttribute('time');
             const testcaseSystemOut = testCase.getElementsByTagName('system-out')[0]?.textContent;
             const testcaseSystemErr = testCase.getElementsByTagName('system-err')[0]?.textContent;
-            const testcaseFailure = testCase.getElementsByTagName('failure')[0];
+            const testcaseFailure =
+              testCase.getElementsByTagName('failure')[0] || testCase.getElementsByTagName('error')[0];
             const testcaseFailureMessage = testcaseFailure?.getAttribute('message');
             const testcaseFailureType = testcaseFailure?.getAttribute('type');
             const testcaseFailureContent = testcaseFailure?.textContent;
