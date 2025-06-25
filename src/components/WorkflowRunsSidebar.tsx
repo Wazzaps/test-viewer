@@ -66,7 +66,7 @@ export function WorkflowRunsSidebar({
                     isSelected={selectedRun?.id === run.id}
                     onSelect={() => onRunSelect(run)}
                   />
-                  {index === 0 && run.isFetched && (
+                  {index === 0 && run.isNotRecent && (
                     <div className="my-3">
                       <Separator />
                       <div className="text-xs text-muted-foreground text-center mt-2 mb-1">Recent Runs</div>

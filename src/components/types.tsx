@@ -14,7 +14,7 @@ export interface WorkflowRun {
   actor: {
     login: string;
   };
-  isFetched?: boolean;
+  isNotRecent?: boolean;
 }
 
 export interface TestResult {

@@ -1,26 +1,43 @@
-import * as zip from '@zip.js/zip.js';
-import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import type { Artifact, GitHubArtifact, GitHubWorkflowRun, TestResult, WorkflowRun } from '@/components/types';
+import { useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import type { Artifact, WorkflowRun } from '@/components/types';
+import {
+  downloadArtifact as downloadArtifactAction,
+  fetchArtifacts,
+  fetchWorkflowRunById,
+  fetchWorkflowRuns,
+  useTestsStore,
+} from '@/stores/testsStore';
 
 export function useTestsPage(org: string, repo: string) {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [workflowRuns, setWorkflowRuns] = useState<WorkflowRun[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_loadedTestResults, setLoadedTestResults] = useState<Set<string>>(new Set());
-  const [selectedRun, setSelectedRun] = useState<WorkflowRun | null>(null);
-  const [testResults, setTestResults] = useState<TestResult[]>([]);
-  const [artifacts, setArtifacts] = useState<Artifact[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [expandedTests, setExpandedTests] = useState<Set<string>>(new Set());
-  const [expandedTestErrors, setExpandedTestErrors] = useState<Set<string>>(new Set());
-  const [error, setError] = useState<string | null>(null);
-  const [loadingTests, setLoadingTests] = useState(false);
-  const [loadingArtifacts, setLoadingArtifacts] = useState(false);
-  const [filterMyRuns, setFilterMyRuns] = useState(false);
-  const [loadingSpecificRun, setLoadingSpecificRun] = useState(false);
+  // Get state and actions from Zustand store
+  const {
+    // State
+    workflowRuns,
+    selectedRun,
+    testResults,
+    artifacts,
+    loading,
+    expandedTests,
+    expandedTestErrors,
+    error,
+    loadingTests,
+    loadingArtifacts,
+    filterMyRuns,
+    loadingSpecificRun,
+
+    // Actions
+    setSelectedRun,
+    setError,
+    setLoadingSpecificRun,
+    setFilterMyRuns,
+    setWorkflowRuns,
+    toggleTestExpansion,
+    toggleTestErrorExpansion,
+  } = useTestsStore();
+
   const currentUser = localStorage.getItem('github_user_login');
 
   useEffect(() => {
@@ -31,8 +48,8 @@ export function useTestsPage(org: string, repo: string) {
       return;
     }
 
-    fetchWorkflowRuns();
-  }, [org, repo]);
+    fetchWorkflowRuns(org, repo);
+  }, [org, repo, setError]);
 
   useEffect(() => {
     if (workflowRuns.length > 0) {
@@ -50,21 +67,10 @@ export function useTestsPage(org: string, repo: string) {
         // If run not found in the list, fetch it individually
         if (!loadingSpecificRun) {
           setLoadingSpecificRun(true);
-          fetchWorkflowRunById(runIdFromUrl).then((fetchedRun) => {
+          fetchWorkflowRunById(org, repo, runIdFromUrl).then((fetchedRun) => {
             if (fetchedRun) {
               // Add the fetched run to the top of the list
-              setWorkflowRuns((prev) => {
-                // Check if the run is already in the list (shouldn't happen, but just in case)
-                const existingIndex = prev.findIndex((run) => run.id === fetchedRun.id);
-                if (existingIndex >= 0) {
-                  // Update the existing run with the fetched data
-                  const updated = [...prev];
-                  updated[existingIndex] = fetchedRun;
-                  return updated;
-                }
-                // Add the fetched run at the top
-                return [fetchedRun, ...prev];
-              });
+              setWorkflowRuns([fetchedRun, ...workflowRuns]);
               setSelectedRun(fetchedRun);
             }
             setLoadingSpecificRun(false);
@@ -78,430 +84,49 @@ export function useTestsPage(org: string, repo: string) {
         const firstRun = workflowRuns[0];
         setSelectedRun(firstRun);
         setSearchParams({ run: firstRun.id.toString() });
-        fetchArtifacts(firstRun);
+        fetchArtifacts(org, repo, firstRun);
       }
     }
-  }, [workflowRuns, searchParams, setSearchParams, loadingSpecificRun]);
+  }, [
+    workflowRuns,
+    searchParams,
+    setSearchParams,
+    loadingSpecificRun,
+    selectedRun,
+    org,
+    repo,
+    setSelectedRun,
+    setLoadingSpecificRun,
+    setWorkflowRuns,
+  ]);
 
   useEffect(() => {
     if (selectedRun) {
-      fetchArtifacts(selectedRun);
+      fetchArtifacts(org, repo, selectedRun);
     }
-  }, [selectedRun]);
+  }, [selectedRun, org, repo]);
 
-  const fetchWorkflowRuns = async () => {
-    setLoading(true);
-    setError(null);
+  const handleRunSelect = useCallback(
+    (run: WorkflowRun) => {
+      setSelectedRun(run);
+      setError(null);
+      // Update URL with the selected run ID
+      setSearchParams({ run: run.id.toString() });
+      fetchArtifacts(org, repo, run);
+    },
+    [org, repo, setSelectedRun, setError, setSearchParams],
+  );
 
-    const token = localStorage.getItem('github_token');
-    if (!token) {
-      setError('No authentication token found. Please sign in again.');
-      setLoading(false);
-      return;
-    }
+  const downloadArtifact = useCallback(
+    async (artifact: Artifact) => {
+      await downloadArtifactAction(org, repo, artifact);
+    },
+    [org, repo],
+  );
 
-    try {
-      const response = await fetch(`https://api.github.com/repos/${org}/${repo}/actions/runs?per_page=100`, {
-        headers: {
-          Authorization: `token ${token}`,
-          Accept: 'application/vnd.github.v3+json',
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setError('Authentication failed. Your token may have expired. Please sign in again.');
-          localStorage.removeItem('github_token');
-          navigate('/');
-          return;
-        }
-        if (response.status === 404) {
-          setError("Repository not found or you don't have access to it.");
-          return;
-        }
-        if (response.status === 403) {
-          setError("Access denied. You may not have permission to view this repository's actions.");
-          return;
-        }
-        throw new Error(`GitHub API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const runs: WorkflowRun[] = data.workflow_runs
-        .filter((run: GitHubWorkflowRun) => run.path.includes('test'))
-        .map((run: GitHubWorkflowRun) => ({
-          id: run.id,
-          name: run.name || run.workflow_id.toString(),
-          head_branch: run.head_branch,
-          status: run.status,
-          conclusion: run.conclusion,
-          created_at: run.created_at,
-          updated_at: run.updated_at,
-          workflow_id: run.workflow_id,
-          workflow_name: run.name || `Workflow ${run.workflow_id}`,
-          run_number: run.run_number,
-          actor: {
-            login: run.actor.login,
-          },
-        }));
-
-      setWorkflowRuns(runs);
-    } catch (error) {
-      console.error('Failed to fetch workflow runs:', error);
-      setError('Failed to fetch workflow runs. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchWorkflowRunById = async (runId: string): Promise<WorkflowRun | null> => {
-    const token = localStorage.getItem('github_token');
-    if (!token) {
-      setError('No authentication token found. Please sign in again.');
-      return null;
-    }
-
-    try {
-      const response = await fetch(`https://api.github.com/repos/${org}/${repo}/actions/runs/${runId}`, {
-        headers: {
-          Authorization: `token ${token}`,
-          Accept: 'application/vnd.github.v3+json',
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setError('Authentication failed. Your token may have expired. Please sign in again.');
-          localStorage.removeItem('github_token');
-          navigate('/');
-          return null;
-        }
-        if (response.status === 404) {
-          setError('Workflow run not found.');
-          return null;
-        }
-        if (response.status === 403) {
-          setError('Access denied. You may not have permission to view this workflow run.');
-          return null;
-        }
-        throw new Error(`GitHub API error: ${response.status}`);
-      }
-
-      const run: GitHubWorkflowRun = await response.json();
-
-      // Only include test-related workflows
-      if (!run.path.includes('test')) {
-        setError('This workflow run does not contain test results.');
-        return null;
-      }
-
-      return {
-        id: run.id,
-        name: run.name || run.workflow_id.toString(),
-        head_branch: run.head_branch,
-        status: run.status,
-        conclusion: run.conclusion,
-        created_at: run.created_at,
-        updated_at: run.updated_at,
-        workflow_id: run.workflow_id,
-        workflow_name: run.name || `Workflow ${run.workflow_id}`,
-        run_number: run.run_number,
-        actor: {
-          login: run.actor.login,
-        },
-        isFetched: true, // Flag to indicate this run was fetched individually
-      };
-    } catch (error) {
-      console.error('Failed to fetch workflow run:', error);
-      setError('Failed to fetch workflow run. Please try again.');
-      return null;
-    }
-  };
-
-  const processTestResultsArtifact = async (artifact: Artifact, blob: Blob, runId: number) => {
-    const zipReader = new zip.ZipReader(new zip.BlobReader(blob));
-    const entries = await zipReader.getEntries();
-    for (const entry of entries) {
-      if (entry.filename.endsWith('.xml')) {
-        const content = await entry.getData!(new zip.TextWriter());
-        const xml = new DOMParser().parseFromString(content, 'application/xml');
-        const testSuites = xml.getElementsByTagName('testsuite');
-        const newTestResults: TestResult[] = [];
-        for (const testSuite of testSuites) {
-          const testSuiteName = testSuite.getAttribute('name');
-          const testCases = testSuite.getElementsByTagName('testcase');
-          for (const testCase of testCases) {
-            const testcaseName = testCase.getAttribute('name');
-            const testcaseDuration = testCase.getAttribute('time');
-            const testcaseSystemOut = testCase.getElementsByTagName('system-out')[0]?.textContent;
-            const testcaseSystemErr = testCase.getElementsByTagName('system-err')[0]?.textContent;
-            const testcaseFailure =
-              testCase.getElementsByTagName('failure')[0] || testCase.getElementsByTagName('error')[0];
-            const testcaseFailureMessage = testcaseFailure?.getAttribute('message');
-            const testcaseFailureType = testcaseFailure?.getAttribute('type');
-            const testcaseFailureContent = testcaseFailure?.textContent;
-            const testcaseSkipped = testCase.getElementsByTagName('skipped')[0];
-            const testcaseSkippedMessage = testcaseSkipped?.getAttribute('message');
-            newTestResults.push({
-              id: `${artifact.name}-${testSuiteName}-${testcaseName}`,
-              name: testcaseName!,
-              suite: `${testSuiteName} • ${artifact.name}`,
-              status: testcaseFailure ? 'failed' : testcaseSkipped ? 'skipped' : 'passed',
-              duration: testcaseDuration ? parseFloat(testcaseDuration) : 0,
-              stdout: (testcaseSystemOut || '').trim(),
-              stderr: (testcaseSystemErr || '').trim(),
-              errorMessage: testcaseFailureMessage || undefined,
-              errorType: testcaseFailureType || undefined,
-              errorContent: testcaseFailureContent || undefined,
-              skippedMessage: testcaseSkippedMessage || undefined,
-            });
-          }
-        }
-        const fullArtifactId = `${runId}-${artifact.id}-${entry.filename}`;
-        setLoadedTestResults((prev) => {
-          if (selectedRun?.id !== runId || prev.has(fullArtifactId)) {
-            return prev;
-          }
-          prev.add(fullArtifactId);
-          setTestResults((prev) =>
-            [...prev, ...newTestResults].sort((a, b) => {
-              // First sort by status: failed, skipped, passed
-              const statusOrder = { failed: 0, skipped: 1, passed: 2 };
-              const statusDiff = statusOrder[a.status] - statusOrder[b.status];
-              if (statusDiff !== 0) return statusDiff;
-
-              // Then sort by id (suite + name)
-              return a.id.localeCompare(b.id);
-            }),
-          );
-          setLoadingTests(false);
-          return prev;
-        });
-      }
-    }
-  };
-
-  const blobToBase64 = (blob: Blob) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(blob);
-    return new Promise<string>((resolve) => {
-      reader.onloadend = () => {
-        resolve(reader.result as string);
-      };
-    });
-  };
-
-  const fetchTestResultsArtifact = async (artifact: Artifact, runId: number) => {
-    // Skip artifacts larger than 1MB
-    if (artifact.size_in_bytes > 1024 * 1024) return;
-
-    const token = localStorage.getItem('github_token');
-    if (!token) return;
-
-    // Check for cached blob
-    const cacheKey = `artifact_${artifact.id}`;
-    const cachedBlob = localStorage.getItem(cacheKey);
-
-    if (cachedBlob) {
-      console.log(`Using cached artifact: ${artifact.name}`);
-      // Convert base64 back to blob
-      const response = await fetch(cachedBlob);
-      const blob = await response.blob();
-      await processTestResultsArtifact(artifact, blob, runId);
-      return;
-    }
-
-    // Get the download URL for the artifact
-    const downloadResponse = await fetch(
-      `https://api.github.com/repos/${org}/${repo}/actions/artifacts/${artifact.id}/zip`,
-      {
-        headers: {
-          Authorization: `token ${token}`,
-          Accept: 'application/vnd.github.v3+json',
-        },
-      },
-    );
-
-    if (!downloadResponse.ok) {
-      console.error(`Failed to download artifact ${artifact.name}: ${downloadResponse.status}`);
-      return;
-    }
-
-    // Create a blob from the response
-    const blob = await downloadResponse.blob();
-    console.log(`Artifact "${artifact.name}" downloaded`);
-
-    // Cache the blob as base64
-    const base64 = await blobToBase64(blob);
-    localStorage.setItem(cacheKey, base64);
-
-    await processTestResultsArtifact(artifact, blob, runId);
-  };
-
-  const processArtifactsList = async (run: WorkflowRun, artifacts: Artifact[]) => {
-    setArtifacts(artifacts);
-    if (run.conclusion) {
-      localStorage.setItem(`run_artifacts_${run.id}`, JSON.stringify(artifacts));
-    }
-
-    // Automatically download and log test artifacts
-    const testArtifacts = artifacts.filter(
-      (artifact) =>
-        artifact.name.toLowerCase().includes('test-artifacts') || artifact.name.toLowerCase().includes('test-results'),
-    );
-
-    for (const artifact of testArtifacts) {
-      try {
-        console.log(`Downloading test artifact: ${artifact.name}`, artifact);
-        fetchTestResultsArtifact(artifact, run.id);
-      } catch (error) {
-        console.error(`Error processing test artifact ${artifact.name}:`, error);
-      }
-    }
-
-    if (testArtifacts.length === 0) {
-      setLoadingTests(false);
-    }
-  };
-
-  const fetchArtifacts = async (run: WorkflowRun) => {
-    const token = localStorage.getItem('github_token');
-    if (!token) return;
-
-    setLoadingArtifacts(true);
-    setLoadingTests(true);
-    setError(null);
-    setArtifacts([]);
-    setTestResults([]);
-    setLoadedTestResults(new Set());
-
-    const cachedArtifacts = localStorage.getItem(`run_artifacts_${run.id}`);
-    if (cachedArtifacts) {
-      const artifacts: Artifact[] = JSON.parse(cachedArtifacts);
-      await processArtifactsList(run, artifacts);
-      setLoadingArtifacts(false);
-      return;
-    }
-
-    try {
-      const response = await fetch(`https://api.github.com/repos/${org}/${repo}/actions/runs/${run.id}/artifacts`, {
-        headers: {
-          Authorization: `token ${token}`,
-          Accept: 'application/vnd.github.v3+json',
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setError('Authentication failed. Your token may have expired. Please sign in again.');
-          localStorage.removeItem('github_token');
-          navigate('/');
-          return;
-        }
-        if (response.status === 404) {
-          setError('Artifacts not found for this workflow run.');
-          return;
-        }
-        if (response.status === 403) {
-          setError('Access denied. You may not have permission to view artifacts.');
-          return;
-        }
-        throw new Error(`GitHub API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const artifacts: Artifact[] = data.artifacts.map((artifact: GitHubArtifact) => ({
-        id: artifact.id,
-        name: artifact.name,
-        size_in_bytes: artifact.size_in_bytes,
-      }));
-      processArtifactsList(run, artifacts);
-    } catch (error) {
-      console.error('Failed to fetch artifacts:', error);
-      setError('Failed to fetch artifacts. Please try again.');
-      setArtifacts([]);
-    } finally {
-      setLoadingArtifacts(false);
-    }
-  };
-
-  const handleRunSelect = (run: WorkflowRun) => {
-    setSelectedRun(run);
-    setError(null);
-    setTestResults([]);
-    setArtifacts([]);
-    setLoadedTestResults(new Set());
-    // Update URL with the selected run ID
-    setSearchParams({ run: run.id.toString() });
-    fetchArtifacts(run);
-  };
-
-  const toggleTestExpansion = (testName: string) => {
-    const newExpanded = new Set(expandedTests);
-    if (newExpanded.has(testName)) {
-      newExpanded.delete(testName);
-    } else {
-      newExpanded.add(testName);
-    }
-    setExpandedTests(newExpanded);
-  };
-
-  const toggleTestErrorExpansion = (testName: string) => {
-    const newExpanded = new Set(expandedTestErrors);
-    if (newExpanded.has(testName)) {
-      newExpanded.delete(testName);
-    } else {
-      newExpanded.add(testName);
-    }
-    setExpandedTestErrors(newExpanded);
-  };
-
-  const downloadArtifact = async (artifact: Artifact) => {
-    const token = localStorage.getItem('github_token');
-    if (!token) {
-      setError('No authentication token found. Please sign in again.');
-      return;
-    }
-
-    try {
-      // Get the download URL for the artifact
-      const response = await fetch(`https://api.github.com/repos/${org}/${repo}/actions/artifacts/${artifact.id}/zip`, {
-        headers: {
-          Authorization: `token ${token}`,
-          Accept: 'application/vnd.github.v3+json',
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setError('Authentication failed. Your token may have expired. Please sign in again.');
-          localStorage.removeItem('github_token');
-          navigate('/');
-          return;
-        }
-        if (response.status === 404) {
-          setError('Artifact not found or has expired.');
-          return;
-        }
-        if (response.status === 403) {
-          setError('Access denied. You may not have permission to download this artifact.');
-          return;
-        }
-        console.log(response);
-        throw new Error(`Failed to download artifact: ${response.status}`);
-      }
-
-      const a = document.createElement('a');
-      a.href = response.url;
-      a.download = `${artifact.name}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Failed to download artifact:', error);
-      setError('Failed to download artifact. Please try again.');
-    }
-  };
+  const fetchWorkflowRunsAction = useCallback(() => {
+    fetchWorkflowRuns(org, repo);
+  }, [org, repo]);
 
   return {
     // State
@@ -525,6 +150,6 @@ export function useTestsPage(org: string, repo: string) {
     toggleTestErrorExpansion,
     downloadArtifact,
     setFilterMyRuns,
-    fetchWorkflowRuns,
+    fetchWorkflowRuns: fetchWorkflowRunsAction,
   };
 }
