@@ -310,8 +310,9 @@ export const processTestResultsArtifact = async (artifact: Artifact, blob: Blob,
     files: {},
     indexPath: htmlCoverageIndex || '',
   };
+  const htmlCoveragePrefix = htmlCoverageDir ? htmlCoverageDir + '/' : '';
   for (const entry of entries) {
-    if (htmlCoverageDir !== null && entry.filename.startsWith(htmlCoverageDir + '/')) {
+    if (htmlCoverageDir !== null && entry.filename.startsWith(htmlCoveragePrefix)) {
       coverageTree.files[entry.filename] = await entry.getData!(new zip.TextWriter());
     }
 
