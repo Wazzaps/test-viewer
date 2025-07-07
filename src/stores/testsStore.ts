@@ -167,23 +167,21 @@ export const fetchWorkflowRuns = async (org: string, repo: string) => {
     }
 
     const data = await response.json();
-    const runs: WorkflowRun[] = data.workflow_runs
-      .filter((run: GitHubWorkflowRun) => run.path.includes('test'))
-      .map((run: GitHubWorkflowRun) => ({
-        id: run.id,
-        name: run.name || run.workflow_id.toString(),
-        head_branch: run.head_branch,
-        status: run.status,
-        conclusion: run.conclusion,
-        created_at: run.created_at,
-        updated_at: run.updated_at,
-        workflow_id: run.workflow_id,
-        workflow_name: run.name || `Workflow ${run.workflow_id}`,
-        run_number: run.run_number,
-        actor: {
-          login: run.actor.login,
-        },
-      }));
+    const runs: WorkflowRun[] = data.workflow_runs.map((run: GitHubWorkflowRun) => ({
+      id: run.id,
+      name: run.name || run.workflow_id.toString(),
+      head_branch: run.head_branch,
+      status: run.status,
+      conclusion: run.conclusion,
+      created_at: run.created_at,
+      updated_at: run.updated_at,
+      workflow_id: run.workflow_id,
+      workflow_name: run.name || `Workflow ${run.workflow_id}`,
+      run_number: run.run_number,
+      actor: {
+        login: run.actor.login,
+      },
+    }));
 
     store.setWorkflowRuns(runs);
   } catch (error) {
@@ -228,12 +226,6 @@ export const fetchWorkflowRunById = async (org: string, repo: string, runId: str
     }
 
     const run: GitHubWorkflowRun = await response.json();
-
-    // Only include test-related workflows
-    if (!run.path.includes('test')) {
-      store.setError('This workflow run does not contain test results.');
-      return null;
-    }
 
     return {
       id: run.id,
@@ -450,8 +442,7 @@ export const processArtifactsList = async (org: string, repo: string, run: Workf
 
   // Automatically download and log test artifacts
   const testArtifacts = sortedArtifacts.filter(
-    (artifact) =>
-      artifact.name.toLowerCase().includes('test-artifacts') || artifact.name.toLowerCase().includes('test-results'),
+    (artifact) => artifact.name.toLowerCase().includes('junit') || artifact.name.toLowerCase().includes('test'),
   );
 
   for (const artifact of testArtifacts) {
