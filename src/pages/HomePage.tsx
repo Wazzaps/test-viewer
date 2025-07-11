@@ -116,6 +116,13 @@ export default function HomePage() {
       // Fetch user data and repositories
       await fetchUserData(accessToken);
       await fetchRepositories(accessToken);
+
+      // Check if there's a stored redirect URL (from reauth on other pages)
+      const redirectUrl = localStorage.getItem('github_oauth_redirect');
+      if (redirectUrl) {
+        localStorage.removeItem('github_oauth_redirect');
+        window.location.href = redirectUrl;
+      }
     } catch (error) {
       console.error('Failed to complete OAuth flow:', error);
       setAuthError(error instanceof Error ? error.message : 'Authentication failed. Please try again.');
