@@ -256,6 +256,7 @@ interface TestViewerConfig {
 }
 
 export const processTestResultsArtifact = async (artifact: Artifact, blob: Blob, runId: number) => {
+  console.log('---- Processing test results artifact:', artifact.name);
   const store = useTestsStore.getState();
   const zipReader = new zip.ZipReader(new zip.BlobReader(blob));
   const entries = await zipReader.getEntries();
@@ -312,12 +313,15 @@ export const processTestResultsArtifact = async (artifact: Artifact, blob: Blob,
   };
   const htmlCoveragePrefix = htmlCoverageDir ? htmlCoverageDir + '/' : '';
   for (const entry of entries) {
+    console.log('-- Processing entry in', artifact.name, ':', entry.filename);
     if (htmlCoverageDir !== null && entry.filename.startsWith(htmlCoveragePrefix)) {
+      console.log('Coverage file found:', artifact.name, ':', entry.filename);
       coverageTree.files[entry.filename] = await entry.getData!(new zip.TextWriter());
     }
 
     // Check if the entry matches any of the junit patterns
     if (regexPatterns.some((regex) => regex.test(entry.filename))) {
+      console.log('JUnit file found:', artifact.name, ':', entry.filename);
       const content = await entry.getData!(new zip.TextWriter());
       const xml = new DOMParser().parseFromString(content, 'application/xml');
       const testSuites = xml.getElementsByTagName('testsuite');
