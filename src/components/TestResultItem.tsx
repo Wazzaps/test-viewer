@@ -1,4 +1,7 @@
+import Convert from 'ansi-to-html';
 import { CheckCircle, ChevronDown, ChevronRight, CircleDashed, CircleHelp, XCircle } from 'lucide-react';
+import { useMemo } from 'react';
+import { useTheme } from 'next-themes';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type { TestResult } from './types';
@@ -23,6 +26,68 @@ function getStatusIcon(status: string) {
 }
 
 export function TestResultItem({ test, isExpanded, onToggleExpansion }: TestResultItemProps) {
+  const { theme } = useTheme();
+  
+  const [convert, codeColors] = useMemo(() => {
+    const isDark = theme === 'dark';
+    
+    // Monokai theme colors
+    const monokaiColors = isDark ? {
+      // Dark Monokai theme
+      fg: '#f8f8f2',      // Light gray
+      bg: '#272822',      // Dark background
+      colors: [
+        '#272822',        // 0: black
+        '#f92672',        // 1: red
+        '#a6e22e',        // 2: green
+        '#f4bf75',        // 3: yellow
+        '#66d9ef',        // 4: blue
+        '#ae81ff',        // 5: magenta
+        '#a1efe4',        // 6: cyan
+        '#f8f8f2',        // 7: white
+        '#75715e',        // 8: bright black
+        '#f92672',        // 9: bright red
+        '#a6e22e',        // 10: bright green
+        '#f4bf75',        // 11: bright yellow
+        '#66d9ef',        // 12: bright blue
+        '#ae81ff',        // 13: bright magenta
+        '#a1efe4',        // 14: bright cyan
+        '#f9f8f5'         // 15: bright white
+      ]
+    } : {
+      // Light Monokai theme (adapted for light mode)
+      fg: '#272822',      // Dark gray
+      bg: '#f9f8f5',      // Light background
+      colors: [
+        '#f9f8f5',        // 0: white
+        '#f92672',        // 1: red
+        '#a6e22e',        // 2: green
+        '#f4bf75',        // 3: yellow
+        '#66d9ef',        // 4: blue
+        '#ae81ff',        // 5: magenta
+        '#a1efe4',        // 6: cyan
+        '#272822',        // 7: black
+        '#75715e',        // 8: gray
+        '#f92672',        // 9: bright red
+        '#a6e22e',        // 10: bright green
+        '#f4bf75',        // 11: bright yellow
+        '#66d9ef',        // 12: bright blue
+        '#ae81ff',        // 13: bright magenta
+        '#a1efe4',        // 14: bright cyan
+        '#272822'         // 15: bright black
+      ]
+    };
+    
+    const convert = new Convert({
+      fg: monokaiColors.fg,
+      bg: monokaiColors.bg,
+      newline: true,
+      escapeXML: false,
+      colors: monokaiColors.colors
+    });
+    return [convert, monokaiColors];
+  }, [theme]);
+  
   return (
     <Collapsible open={isExpanded} className="test-result-row">
       <CollapsibleTrigger
@@ -54,7 +119,14 @@ export function TestResultItem({ test, isExpanded, onToggleExpansion }: TestResu
             {test.errorContent && (
               <>
                 <hr className="my-2 border-red-300 dark:border-red-800" />
-                <pre className="text-xs rounded overflow-x-auto">{test.errorContent}</pre>
+                <pre
+                  className="text-xs rounded overflow-x-auto"
+                  dangerouslySetInnerHTML={{ __html: convert.toHtml(test.errorContent.replace(/\ufffd/g, '\x1b')) }}
+                  style={{
+
+                    color: codeColors.fg,
+                  }}
+                />
               </>
             )}
           </Alert>
