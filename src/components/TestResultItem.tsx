@@ -121,9 +121,10 @@ export function TestResultItem({ test, isExpanded, onToggleExpansion }: TestResu
                 <hr className="my-2 border-red-300 dark:border-red-800" />
                 <pre
                   className="text-xs rounded overflow-x-auto"
-                  dangerouslySetInnerHTML={{ __html: convert.toHtml(test.errorContent.replace(/\ufffd/g, '\x1b')) }}
+                  dangerouslySetInnerHTML={{
+                    __html: convert.toHtml(test.errorContent.replace(/\ufffd/g, '\x1b').replace(/#x1B\[/g, "\x1b["))
+                  }}
                   style={{
-
                     color: codeColors.fg,
                   }}
                 />
