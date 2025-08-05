@@ -331,8 +331,9 @@ export const processTestResultsArtifact = async (artifact: Artifact, blob: Blob,
         const testSuiteName = testSuite.getAttribute('name');
         const testCases = testSuite.getElementsByTagName('testcase');
 
-        for (const testCase of testCases) {
+        testCases.forEach((testCase, index) => {
           const testcaseName = testCase.getAttribute('name');
+          const testcaseClassName = testCase.getAttribute('classname');
           const testcaseDuration = testCase.getAttribute('time');
           const testcaseSystemOut = testCase.getElementsByTagName('system-out')[0]?.textContent;
           const testcaseSystemErr = testCase.getElementsByTagName('system-err')[0]?.textContent;
@@ -345,9 +346,12 @@ export const processTestResultsArtifact = async (artifact: Artifact, blob: Blob,
           const testcaseSkippedMessage = testcaseSkipped?.getAttribute('message');
 
           newTestResults.push({
-            id: `${artifact.name}-${testSuiteName}-${testcaseName}`,
-            name: testcaseName!,
-            suite: `${testSuiteName} • ${artifact.name}`,
+            // JUnit doesn't require uniqueness, and we want to be able to toggle every test separately
+            id: `${artifact.name}-${testSuiteName}-${testcaseClassName}-${testcaseName}-${index}`,
+            name: [testcaseClassName !== testSuiteName ? testcaseClassName : '', artifact.name]
+              .filter((name) => name && name.trim())
+              .join(' / '),
+            suite: [testSuiteName, artifact.name].filter((name) => name && name.trim()).join(' • '),
             status: testcaseFailure ? 'failed' : testcaseSkipped ? 'skipped' : 'passed',
             duration: testcaseDuration ? parseFloat(testcaseDuration) : 0,
             stdout: (testcaseSystemOut || '').trim(),
@@ -357,7 +361,7 @@ export const processTestResultsArtifact = async (artifact: Artifact, blob: Blob,
             errorContent: testcaseFailureContent || undefined,
             skippedMessage: testcaseSkippedMessage || undefined,
           });
-        }
+        });
       }
 
       const fullArtifactId = `${runId}-${artifact.id}-${entry.filename}`;
@@ -389,7 +393,10 @@ const blobToBase64 = (blob: Blob) => {
 
 export const fetchTestResultsArtifact = async (org: string, repo: string, artifact: Artifact, runId: number) => {
   // Skip artifacts larger than 1MB
-  if (artifact.size_in_bytes > 1024 * 1024) return;
+  if (artifact.size_in_bytes > 1024 * 1024) {
+    // TODO Toast/show a banner about this artifact being ignored, and allow overriding (for this runId only, for this repo/org, for everything
+    return;
+  }
 
   const token = localStorage.getItem('github_token');
   if (!token) return;
@@ -453,7 +460,7 @@ export const processArtifactsList = async (org: string, repo: string, run: Workf
   for (const artifact of testArtifacts) {
     try {
       console.log(`Downloading test artifact: ${artifact.name}`, artifact);
-      fetchTestResultsArtifact(org, repo, artifact, run.id);
+      await fetchTestResultsArtifact(org, repo, artifact, run.id);
     } catch (error) {
       console.error(`Error processing test artifact ${artifact.name}:`, error);
     }

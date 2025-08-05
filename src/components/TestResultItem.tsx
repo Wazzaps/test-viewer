@@ -88,16 +88,80 @@ export function TestResultItem({ test, isExpanded, onToggleExpansion }: TestResu
     return [convert, monokaiColors];
   }, [theme]);
   
+
+  const content = [
+    test.errorMessage && (
+      <Alert
+        key="error"
+        variant="destructive"
+        className="mt-4 bg-[#fff9f9] dark:bg-[#281212] text-red-700 dark:text-red-300"
+      >
+        <div>
+          <AlertTitle>{test.errorMessage}</AlertTitle>
+          <AlertDescription>{test.errorType}</AlertDescription>
+        </div>
+
+        {test.errorContent && (
+          <>
+            <hr className="my-2 border-red-300 dark:border-red-800" />
+            <pre
+              className="text-xs rounded overflow-x-auto"
+              dangerouslySetInnerHTML={{ __html: convert.toHtml(test.errorContent.replace(/\ufffd/g, '\x1b')) }}
+              style={{
+                color: codeColors.fg,
+              }}
+            />
+          </>
+        )}
+      </Alert>
+    ),
+    test.skippedMessage && (
+      <Alert key="skipped" className="mt-4 bg-yellow-50 dark:bg-[#2c241e] text-yellow-700 dark:text-yellow-200">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <AlertTitle>Skip reason</AlertTitle>
+            <AlertDescription>
+              <pre className="text-xs overflow-x-auto mt-2">{test.skippedMessage}</pre>
+            </AlertDescription>
+          </div>
+        </div>
+      </Alert>
+    ),
+    !!(test.stdout || test.stderr) && (
+      <div key="output" className="mt-3 space-y-3 mb-3">
+        {test.stdout && (
+          <div>
+            <h4 className="text-sm font-medium mb-2">Stdout</h4>
+            <pre className="text-xs bg-muted/60 p-2 rounded-lg overflow-x-auto">{test.stdout}</pre>
+          </div>
+        )}
+        {test.stderr && (
+          <div>
+            <h4 className="text-sm font-medium mb-2">Stderr</h4>
+            <pre className="text-xs bg-muted/60 p-3 rounded-lg overflow-x-auto">{test.stderr}</pre>
+          </div>
+        )}
+      </div>
+    ),
+  ].filter(Boolean);
+
+  const hasContent = !!content.length;
+
   return (
     <Collapsible open={isExpanded} className="test-result-row">
       <CollapsibleTrigger
         className="w-full flex items-center justify-between p-1 border hover:bg-primary-foreground/50 transition-colors"
-        onClick={onToggleExpansion}
+        onClick={hasContent ? onToggleExpansion : () => {}}
       >
-        {isExpanded ? (
-          <ChevronDown className="h-4 w-4 flex-shrink-0" />
+        {hasContent ? (
+          isExpanded ? (
+            <ChevronDown className="h-4 w-4 flex-shrink-0" />
+          ) : (
+            <ChevronRight className="h-4 w-4 flex-shrink-0" />
+          )
         ) : (
-          <ChevronRight className="h-4 w-4 flex-shrink-0" />
+          // No content, no Chevron
+          <span className="h-4 w-4 flex-shrink-0" />
         )}
         <div className="flex items-center gap-3 flex-1 min-w-0 ml-1">
           {getStatusIcon(test.status)}
@@ -108,56 +172,7 @@ export function TestResultItem({ test, isExpanded, onToggleExpansion }: TestResu
           <div className="text-xs text-muted-foreground truncate text-right flex-1 mr-1">{test.suite}</div>
         </div>
       </CollapsibleTrigger>
-      <CollapsibleContent className="px-3 pb-3">
-        {test.errorMessage && (
-          <Alert variant="destructive" className="mt-4 bg-[#fff9f9] dark:bg-[#281212] text-red-700 dark:text-red-300">
-            <div>
-              <AlertTitle>{test.errorMessage}</AlertTitle>
-              <AlertDescription>{test.errorType}</AlertDescription>
-            </div>
-
-            {test.errorContent && (
-              <>
-                <hr className="my-2 border-red-300 dark:border-red-800" />
-                <pre
-                  className="text-xs rounded overflow-x-auto"
-                  dangerouslySetInnerHTML={{ __html: convert.toHtml(test.errorContent.replace(/\ufffd/g, '\x1b')) }}
-                  style={{
-
-                    color: codeColors.fg,
-                  }}
-                />
-              </>
-            )}
-          </Alert>
-        )}
-        {test.skippedMessage && (
-          <Alert className="mt-4 bg-yellow-50 dark:bg-[#2c241e] text-yellow-700 dark:text-yellow-200">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <AlertTitle>Skip reason</AlertTitle>
-                <AlertDescription>
-                  <pre className="text-xs overflow-x-auto mt-2">{test.skippedMessage}</pre>
-                </AlertDescription>
-              </div>
-            </div>
-          </Alert>
-        )}
-        <div className="mt-3 space-y-3 mb-3">
-          {test.stdout && (
-            <div>
-              <h4 className="text-sm font-medium mb-2">Stdout</h4>
-              <pre className="text-xs bg-muted/60 p-2 rounded-lg overflow-x-auto">{test.stdout}</pre>
-            </div>
-          )}
-          {test.stderr && (
-            <div>
-              <h4 className="text-sm font-medium mb-2">Stderr</h4>
-              <pre className="text-xs bg-muted/60 p-3 rounded-lg overflow-x-auto">{test.stderr}</pre>
-            </div>
-          )}
-        </div>
-      </CollapsibleContent>
+      <CollapsibleContent className="px-3 pb-3">{content}</CollapsibleContent>
     </Collapsible>
   );
 }
