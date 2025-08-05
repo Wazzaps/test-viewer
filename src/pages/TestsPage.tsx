@@ -19,6 +19,7 @@ export default function TestsPage() {
   const [selectedCoverageTree, setSelectedCoverageTree] = useState<CoverageTree | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
+  const [isWideMode, setIsWideMode] = useState(false);
 
   const {
     // State
@@ -96,7 +97,7 @@ export default function TestsPage() {
         onDownloadArtifact={downloadArtifact}
       />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className={'container px-4 py-8 ' + (isWideMode ? 'max-w-[calc(100%-4rem)]' : 'mx-auto')}>
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Workflow Runs Sidebar */}
           <WorkflowRunsSidebar
@@ -108,6 +109,8 @@ export default function TestsPage() {
             onRunSelect={handleRunSelect}
             onFilterToggle={() => setFilterMyRuns(!filterMyRuns)}
             onRefresh={fetchWorkflowRuns}
+            onWideModeToggle={() => setIsWideMode(!isWideMode)}
+            isWideMode={isWideMode}
           />
 
           {/* Main Content */}
@@ -175,6 +178,7 @@ export default function TestsPage() {
 
                 {/* Test Results */}
                 <TestResultsCard
+                  key={selectedRun.id}
                   testResults={testResults}
                   loading={loadingTests}
                   error={error}
