@@ -1,4 +1,4 @@
-import { Filter, FlaskConicalOff, RefreshCw } from 'lucide-react';
+import { Filter, FlaskConicalOff, RefreshCw, Expand, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -14,6 +14,8 @@ interface WorkflowRunsSidebarProps {
   onRunSelect: (run: WorkflowRun) => void;
   onFilterToggle: () => void;
   onRefresh: () => void;
+  onWideModeToggle: () => void;
+  isWideMode: boolean;
 }
 
 export function WorkflowRunsSidebar({
@@ -25,6 +27,8 @@ export function WorkflowRunsSidebar({
   onRunSelect,
   onFilterToggle,
   onRefresh,
+  onWideModeToggle,
+  isWideMode,
 }: WorkflowRunsSidebarProps) {
   const filteredWorkflowRuns =
     filterMyRuns && currentUser ? workflowRuns.filter((run) => run.actor.login === currentUser) : workflowRuns;
@@ -45,6 +49,9 @@ export function WorkflowRunsSidebar({
             </Button>
             <Button variant="outline" size="sm" onClick={onRefresh}>
               <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={onWideModeToggle}>
+              {isWideMode ? <Minimize2 className="h-4 w-4" /> : <Expand className="h-4 w-4" />}
             </Button>
           </div>
         </div>
