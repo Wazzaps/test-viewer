@@ -463,7 +463,7 @@ export const processArtifactsList = async (org: string, repo: string, run: Workf
   for (const artifact of testArtifacts) {
     try {
       console.log(`Downloading test artifact: ${artifact.name}`, artifact);
-      fetchTestResultsArtifact(org, repo, artifact, run.id);
+      await fetchTestResultsArtifact(org, repo, artifact, run.id);
     } catch (error) {
       console.error(`Error processing test artifact ${artifact.name}:`, error);
     }
