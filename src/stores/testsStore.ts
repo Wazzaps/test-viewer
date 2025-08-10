@@ -261,7 +261,6 @@ export const processTestResultsArtifact = async (artifact: Artifact, blob: Blob,
   const zipReader = new zip.ZipReader(new zip.BlobReader(blob));
   const entries = await zipReader.getEntries();
 
-  // Look for test-viewer.json configuration file
   let junitPatterns: string[] = ['**.xml']; // Default pattern
   let htmlCoverageIndex: string | null = null;
   let htmlCoverageDir: string | null = null;
@@ -272,6 +271,7 @@ export const processTestResultsArtifact = async (artifact: Artifact, blob: Blob,
     htmlCoverageDir = 'llvm-cov/html';
   }
 
+  // Look for test-viewer.json configuration file
   const configEntry = entries.find((entry) => entry.filename === 'test-viewer.json');
   if (configEntry) {
     try {
@@ -350,7 +350,7 @@ export const processTestResultsArtifact = async (artifact: Artifact, blob: Blob,
             id: `${artifact.name}-${testSuiteName}-${testcaseClassName}-${testcaseName}-${index}`,
             name: [testcaseClassName !== testSuiteName ? testcaseClassName : '', artifact.name]
               .filter((name) => name && name.trim())
-              .join(' / '),
+              .join(' > '),
             suite: [testSuiteName, artifact.name].filter((name) => name && name.trim()).join(' • '),
             status: testcaseFailure ? 'failed' : testcaseSkipped ? 'skipped' : 'passed',
             duration: testcaseDuration ? parseFloat(testcaseDuration) : 0,
@@ -434,12 +434,32 @@ export const fetchTestResultsArtifact = async (org: string, repo: string, artifa
 
   // Cache the blob as base64
   const base64 = await blobToBase64(blob);
-  // (Best effort)
-  try {
-    localStorage.setItem(cacheKey, base64);
-  } catch {
-    console.error('Failed writing to localStorage, quota issue?');
+  for (;;) {
+    const totalSizeWithNewItem = Object.entries(localStorage).filter(([k]) => k !== cacheKey).flat().map(kOrV => kOrV.length).reduce((val, total) => total + val, 0) + cacheKey.length + base64.length;
+    if (totalSizeWithNewItem < 5*1024*1024) {
+      break;
+    }
+
+    const existingItemsBySize = Object.entries(localStorage).map(([k, v]) => [k, k.length + v.length]).sort((a, b) => b[1] - a[1]);
+    const keyToRemove = existingItemsBySize[0][0];
+    console.log("Removing key", keyToRemove, "to free", localStorage.getItem(keyToRemove)!.length + keyToRemove.length, "bytes");
+    localStorage.removeItem(keyToRemove);
   }
+  try {
+      localStorage.setItem(cacheKey, base64);
+  } catch {
+      // Ignore
+  }
+  // TODO Handle quota of localStorage - remove old caches of artifacts, and retry to write
+  // const currentUsedBytes = Object.entries(localStorage).flat().map(x => x.length).reduce((val, total) => total + val, 0);
+  // localStorage.setItem() will fail if currentUsedBytes + key.length + value.length > 5*1024*1024.
+  // in this case, we should clear old artifacts (lowest number?) until there's enough room for the item to set,
+  // and maybe keep some extra empty space for small settings and state.
+  // We might also use some compression function.
+  // Maybe if value is long enough, try to compress, and if the compression made it smaller, save it compressed.
+  // The value (or key?) then should have some prefix do indicate compressed/uncompressed.
+  // new LocalStorageFiles({ maxFilesStorage: 4.5 * 1024 * 1024 }). readFile, writeFile, fileExists, removeFile
+  // TODO Build LocalStorageFiles based on IndexedDB (mind that this must be async, as IndexedDB is async)
 
   await processTestResultsArtifact(artifact, blob, runId);
 };
