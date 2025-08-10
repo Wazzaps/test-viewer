@@ -133,12 +133,26 @@ export function CoverageFrame({ coverageTree, onClose }: CoverageFrameProps) {
         
         // Listen for clicks on links
         document.addEventListener('click', function(e) {
-          if (e.target.tagName === 'A' && e.target.href) {
-            const url = e.target.getAttribute('href');
-            if (url && !url.startsWith('http') && !url.startsWith('mailto:') && !url.startsWith('#')) {
-              e.preventDefault();
-              window.parent.postMessage({ type: 'navigation', url: url }, '*');
-            }
+          // The click might be on a link, or a descendent of link
+          let elem = e.target;
+          let link = null;
+          while (elem !== document.documentElement) {
+              if (elem.tagName === 'A' && elem.href) {
+                  link = elem;
+                  break;
+              }
+              if (elem.parentNode) {
+                  elem = elem.parentNode;
+              } else {
+                  break;
+              }
+          }
+          if (!link) return;
+
+          const url = elem.getAttribute('href');
+          if (url && !url.startsWith('http') && !url.startsWith('mailto:') && !url.startsWith('#')) {
+            e.preventDefault();
+            window.parent.postMessage({ type: 'navigation', url: url }, '*');
           }
         });
       `;
