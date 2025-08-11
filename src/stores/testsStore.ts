@@ -388,8 +388,8 @@ const blobToBase64 = (blob: Blob) => {
 };
 
 export const fetchTestResultsArtifact = async (org: string, repo: string, artifact: Artifact, runId: number) => {
-  // Skip artifacts larger than 1MB
-  if (artifact.size_in_bytes > 1024 * 1024) return;
+  // Skip artifacts larger than 2.5MB
+  if (artifact.size_in_bytes > 2.5 * 1024 * 1024) return;
 
   const token = localStorage.getItem('github_token');
   if (!token) return;
