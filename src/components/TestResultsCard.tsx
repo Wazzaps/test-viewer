@@ -3,6 +3,8 @@ import { FlaskConicalOff, Filter } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { TestResultItem } from './TestResultItem';
 import type { TestResult } from './types';
+import { Button } from './ui/button';
+import { cn } from '@/lib/utils';
 
 interface TestResultsCardProps {
   testResults: TestResult[];
@@ -12,7 +14,27 @@ interface TestResultsCardProps {
   onToggleTestExpansion: (testName: string) => void;
 }
 
-const FILTERED_OUT = ' opacity-60 line-through';
+const STATS_BUTTONS: Array<{ statusKey: TestResult['status']; lightColor: string; darkColor: string; label: string }> =
+  [
+    {
+      statusKey: 'failed',
+      lightColor: 'text-red-600 bg-red-200 hover:text-red-700 hover:bg-red-300',
+      darkColor: 'dark:text-red-300 dark:bg-red-900',
+      label: 'failed',
+    },
+    {
+      statusKey: 'passed',
+      lightColor: 'text-green-600 bg-green-200 hover:text-green-700 hover:bg-green-300',
+      darkColor: 'dark:text-green-400 dark:bg-green-900',
+      label: 'passed',
+    },
+    {
+      statusKey: 'skipped',
+      lightColor: 'text-yellow-600 bg-yellow-200 hover:text-yellow-700 hover:bg-yellow-300',
+      darkColor: 'dark:text-yellow-400 dark:bg-yellow-900',
+      label: 'skipped',
+    },
+  ];
 
 export function TestResultsCard({
   testResults,
@@ -21,7 +43,7 @@ export function TestResultsCard({
   expandedTests,
   onToggleTestExpansion,
 }: TestResultsCardProps) {
-  const stats = {
+  const stats: Record<TestResult['status'], number> = {
     passed: testResults.filter((t) => t.status === 'passed').length,
     failed: testResults.filter((t) => t.status === 'failed').length,
     skipped: testResults.filter((t) => t.status === 'skipped').length,
@@ -48,53 +70,27 @@ export function TestResultsCard({
           {testResults.length > 0 && (
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 text-sm">
-                <span
-                  className={
-                    stats.failed > 0
-                      ? 'cursor-pointer text-red-600 dark:text-red-400' + (!statusesToShow.failed ? FILTERED_OUT : '')
-                      : 'text-gray-400 dark:text-gray-500'
-                  }
-                  onClick={() =>
-                    setStatusesToShow((prevStatusesToShow) => ({
-                      ...prevStatusesToShow,
-                      failed: !prevStatusesToShow.failed,
-                    }))
-                  }
-                >
-                  {stats.failed} failed
-                </span>
-                <span
-                  className={
-                    stats.passed > 0
-                      ? 'cursor-pointer text-green-600 dark:text-green-400' +
-                        (!statusesToShow.passed ? FILTERED_OUT : '')
-                      : 'text-gray-400 dark:text-gray-500'
-                  }
-                  onClick={() =>
-                    setStatusesToShow((prevStatusesToShow) => ({
-                      ...prevStatusesToShow,
-                      passed: !prevStatusesToShow.passed,
-                    }))
-                  }
-                >
-                  {stats.passed} passed
-                </span>
-                <span
-                  className={
-                    stats.skipped > 0
-                      ? 'cursor-pointer text-yellow-600 dark:text-yellow-400' +
-                        (!statusesToShow.skipped ? FILTERED_OUT : '')
-                      : 'text-gray-400 dark:text-gray-500'
-                  }
-                  onClick={() =>
-                    setStatusesToShow((prevStatusesToShow) => ({
-                      ...prevStatusesToShow,
-                      skipped: !prevStatusesToShow.skipped,
-                    }))
-                  }
-                >
-                  {stats.skipped} skipped
-                </span>
+                {STATS_BUTTONS.map(({ statusKey, lightColor, darkColor, label }) => (
+                  <Button
+                    key={statusKey}
+                    variant="secondary"
+                    className={cn(
+                      stats[statusKey] > 0
+                        ? `cursor-pointer ${lightColor} ${darkColor}`
+                        : 'text-gray-400 dark:text-gray-500',
+                      !statusesToShow[statusKey] && 'opacity-70 line-through',
+                    )}
+                    disabled={stats[statusKey] === 0}
+                    onClick={() =>
+                      setStatusesToShow((prevStatusesToShow) => ({
+                        ...prevStatusesToShow,
+                        [statusKey]: !prevStatusesToShow[statusKey],
+                      }))
+                    }
+                  >
+                    {stats[statusKey]} {label}
+                  </Button>
+                ))}
               </div>
             </div>
           )}
