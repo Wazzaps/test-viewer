@@ -429,7 +429,12 @@ export const fetchTestResultsArtifact = async (org: string, repo: string, artifa
 
   // Cache the blob as base64
   const base64 = await blobToBase64(blob);
-  localStorage.setItem(cacheKey, base64);
+  // (Best effort)
+  try {
+    localStorage.setItem(cacheKey, base64);
+  } catch {
+    console.error('Failed writing to localStorage, quota issue?');
+  }
 
   await processTestResultsArtifact(artifact, blob, runId);
 };
