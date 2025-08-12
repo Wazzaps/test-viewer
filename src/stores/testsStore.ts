@@ -331,7 +331,7 @@ export const processTestResultsArtifact = async (artifact: Artifact, blob: Blob,
         const testSuiteName = testSuite.getAttribute('name');
         const testCases = testSuite.getElementsByTagName('testcase');
 
-        testCases.forEach((testCase, index) => {
+        Array.from(testCases).forEach((testCase, index) => {
           const testcaseName = testCase.getAttribute('name');
           const testcaseClassName = testCase.getAttribute('classname');
           const testcaseDuration = testCase.getAttribute('time');
@@ -348,7 +348,7 @@ export const processTestResultsArtifact = async (artifact: Artifact, blob: Blob,
           newTestResults.push({
             // JUnit doesn't require uniqueness, and we want to be able to toggle every test separately
             id: `${artifact.name}-${testSuiteName}-${testcaseClassName}-${testcaseName}-${index}`,
-            name: [testcaseClassName !== testSuiteName ? testcaseClassName : '', artifact.name]
+            name: [testcaseClassName !== testSuiteName ? testcaseClassName : '', testcaseName]
               .filter((name) => name && name.trim())
               .join(' > '),
             suite: [testSuiteName, artifact.name].filter((name) => name && name.trim()).join(' • '),
